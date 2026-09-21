@@ -1,0 +1,533 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Log an expense</title>
+<meta name="theme-color" content="#F1F4F1">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧾</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #12202F;
+    --ink-soft: #4A5866;
+    --paper: #F1F4F1;
+    --sheet: #FBFCFB;
+    --field: #E4EAE6;
+    --rule: #D3DBD5;
+    --money: #0E6B4F;
+    --money-ink: #FFFFFF;
+    --mark: #F2B632;
+    --error: #B3261E;
+    --error-bg: #FBE9E7;
+    --display: "Bricolage Grotesque", "Trebuchet MS", system-ui, sans-serif;
+    --body: "Instrument Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ink: #E8EEE9;
+      --ink-soft: #A3B0A9;
+      --paper: #0F1512;
+      --sheet: #151D19;
+      --field: #1F2A24;
+      --rule: #2B3830;
+      --money: #3FBF94;
+      --money-ink: #08130E;
+      --error: #FF8A80;
+      --error-bg: #3A1F1C;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  html { color-scheme: light dark; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font: 400 1rem/1.5 var(--body);
+    -webkit-text-size-adjust: 100%;
+  }
+
+  .page {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: clamp(1.25rem, 4vw, 3rem) clamp(1rem, 4vw, 2rem) 4rem;
+  }
+  header { margin-bottom: 2rem; }
+  h1 {
+    margin: 0 0 .5rem;
+    font: 700 clamp(1.9rem, 4vw, 2.6rem)/1.1 var(--display);
+    letter-spacing: -.02em;
+  }
+  header p { margin: 0; max-width: 54ch; color: var(--ink-soft); }
+
+  .layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, .8fr);
+    gap: clamp(1.5rem, 4vw, 3.5rem);
+    align-items: start;
+  }
+  @media (max-width: 860px) { .layout { grid-template-columns: 1fr; } }
+
+  /* Entry form */
+  .sheet {
+    background: var(--sheet);
+    border: 1px solid var(--rule);
+    border-radius: 20px;
+    padding: clamp(1.25rem, 3vw, 2rem);
+  }
+  .sheet > * + * { margin-top: 1.4rem; }
+
+  fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
+  label, legend { font-weight: 600; font-size: .9rem; padding: 0; }
+  legend { margin-bottom: .5rem; }
+  .opt { font-weight: 400; color: var(--ink-soft); }
+
+  .field { display: flex; flex-direction: column; gap: .35rem; }
+
+  .amount {
+    display: flex;
+    align-items: baseline;
+    gap: .5rem;
+    padding-bottom: .25rem;
+    border-bottom: 3px solid var(--mark);
+  }
+  .amount:focus-within { border-bottom-color: var(--money); }
+  .amount .sym {
+    font: 500 clamp(2rem, 6vw, 3rem)/1 var(--display);
+    color: var(--money);
+  }
+  #amount {
+    flex: 1;
+    min-width: 0;
+    padding: 0;
+    border: 0;
+    outline: none;
+    background: transparent;
+    color: var(--ink);
+    font: 700 clamp(2.75rem, 9vw, 4.5rem)/1.05 var(--display);
+    letter-spacing: -.03em;
+    font-variant-numeric: tabular-nums;
+  }
+  #amount::placeholder { color: var(--ink-soft); opacity: .45; }
+
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  @media (max-width: 520px) { .row { grid-template-columns: 1fr; } }
+
+  .text-input {
+    width: 100%;
+    padding: .7rem .85rem;
+    border: 2px solid transparent;
+    border-radius: 10px;
+    background: var(--field);
+    color: var(--ink);
+    font: inherit;
+  }
+  .text-input:focus-visible { outline: none; border-color: var(--money); }
+
+  .chips { display: flex; flex-wrap: wrap; gap: .5rem; }
+  .chip { position: relative; }
+  .chip input { position: absolute; opacity: 0; pointer-events: none; }
+  .chip span {
+    display: inline-block;
+    padding: .5rem .95rem;
+    border-radius: 999px;
+    background: var(--field);
+    font-weight: 500;
+    cursor: pointer;
+    transition: background .15s, color .15s;
+  }
+  .chip input:checked + span { background: var(--ink); color: var(--paper); }
+  .chip input:focus-visible + span { outline: 3px solid var(--money); outline-offset: 2px; }
+
+  .submit {
+    width: 100%;
+    padding: 1rem;
+    border: 0;
+    border-radius: 12px;
+    background: var(--money);
+    color: var(--money-ink);
+    font: 600 1.1rem var(--body);
+    cursor: pointer;
+  }
+  .submit:hover { filter: brightness(1.08); }
+  .submit:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
+  .submit[disabled] { opacity: .6; cursor: progress; }
+
+  .status { padding: .7rem .9rem; border-radius: 10px; }
+  .status:empty { display: none; }
+  .status.ok { background: var(--field); }
+  .status.err { background: var(--error-bg); color: var(--error); }
+
+  .setup {
+    margin: 0;
+    padding: .7rem .9rem;
+    border-left: 4px solid var(--mark);
+    background: var(--field);
+    border-radius: 0 10px 10px 0;
+    font-size: .95rem;
+  }
+  .setup[hidden] { display: none; }
+
+  /* Saved list */
+  .log h2 {
+    margin: 0 0 .25rem;
+    font: 700 1.25rem/1.2 var(--display);
+  }
+  .log .note { margin: 0 0 1.25rem; color: var(--ink-soft); font-size: .95rem; }
+  .month {
+    display: flex;
+    align-items: baseline;
+    gap: .6rem;
+    margin-bottom: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--rule);
+  }
+  .month strong {
+    font: 700 1.9rem/1 var(--display);
+    letter-spacing: -.02em;
+    font-variant-numeric: tabular-nums;
+  }
+  .month span { color: var(--ink-soft); }
+
+  #entries { list-style: none; margin: 0; padding: 0; }
+  .entry {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: .75rem .5rem;
+    border-bottom: 1px solid var(--rule);
+    border-radius: 8px;
+  }
+  .entry .title { font-weight: 600; overflow-wrap: anywhere; }
+  .entry .meta { color: var(--ink-soft); font-size: .9rem; }
+  .entry .meta span + span { margin-left: .75rem; }
+  .entry .amt {
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  .entry.new { animation: flash 1.6s ease-out; }
+  @keyframes flash { from { background: var(--mark); } to { background: transparent; } }
+  @media (prefers-reduced-motion: reduce) { .entry.new { animation: none; } }
+
+  .empty { margin: 0; color: var(--ink-soft); }
+  .clear {
+    margin-top: 1rem;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--ink-soft);
+    font: inherit;
+    font-size: .9rem;
+    text-decoration: underline;
+    cursor: pointer;
+  }
+  .clear:focus-visible { outline: 3px solid var(--money); outline-offset: 3px; }
+  .clear[hidden] { display: none; }
+</style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <h1>Log an expense</h1>
+    <p>Each entry goes to the expense sheet, and the report emails to the owner, accountant and manager follow automatically.</p>
+  </header>
+
+  <div class="layout">
+    <main>
+      <form id="expense-form" class="sheet" novalidate>
+        <p class="setup" id="setup" hidden>
+          Setup needed: paste your Zapier webhook URL into <code>CONFIG.webhookUrl</code> in this file. Until then, entries can't be sent.
+        </p>
+
+        <div class="field">
+          <label for="amount">Amount</label>
+          <div class="amount">
+            <span class="sym" id="sym" aria-hidden="true"></span>
+            <input id="amount" name="amount" type="text" inputmode="decimal" autocomplete="off" placeholder="0.00" required>
+          </div>
+        </div>
+
+        <fieldset>
+          <legend>Category</legend>
+          <div class="chips" id="categories"></div>
+        </fieldset>
+
+        <div class="row">
+          <div class="field">
+            <label for="date">Date</label>
+            <input class="text-input" id="date" name="date" type="date" required>
+          </div>
+          <div class="field">
+            <label for="vendor">Paid to</label>
+            <input class="text-input" id="vendor" name="vendor" type="text" maxlength="100" autocomplete="off" required>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="description">What was it for? <span class="opt">(optional)</span></label>
+          <input class="text-input" id="description" name="description" type="text" maxlength="200" autocomplete="off">
+        </div>
+
+        <fieldset>
+          <legend>Paid with</legend>
+          <div class="chips" id="payments"></div>
+        </fieldset>
+
+        <button class="submit" id="submit" type="submit">Save expense</button>
+        <div class="status" id="status" role="status" aria-live="polite"></div>
+      </form>
+    </main>
+
+    <aside class="log" aria-labelledby="log-title">
+      <h2 id="log-title">Saved from this browser</h2>
+      <p class="note">A quick reference of what you've saved here. Your sheet is the full record.</p>
+      <div class="month">
+        <strong id="month-total">0.00</strong>
+        <span>this month</span>
+      </div>
+      <ul id="entries"></ul>
+      <p class="empty" id="empty">Nothing saved yet. Your entries will appear here.</p>
+      <button class="clear" id="clear" type="button" hidden>Clear this list</button>
+    </aside>
+  </div>
+</div>
+
+<script>
+(() => {
+  "use strict";
+
+  /* ------------------------------------------------------------------
+     CONFIG: edit these values.
+     ------------------------------------------------------------------ */
+  const CONFIG = {
+    // Zapier "Webhooks by Zapier > Catch Hook" URL
+    webhookUrl:"https://script.google.com/macros/s/AKfycbwCnTmx1I7XnjJuFe7laaO_apEm8zhs1mv4FLva08csvUxZ0_PoBYLuk6cf6w0sgMi3/exec ",
+    // ISO currency code, e.g. "USD", "INR", "EUR", "GBP"
+    currency: "USD",
+    categories: ["Supplies", "Rent", "Salaries", "Utilities", "Travel", "Meals", "Marketing", "Software", "Other"],
+    paymentMethods: ["Cash", "Card", "Bank transfer"]
+  };
+
+  const STORAGE_KEY = "expense-log-v1";
+  const $ = (sel) => document.querySelector(sel);
+
+  const form = $("#expense-form");
+  const amountEl = $("#amount");
+  const dateEl = $("#date");
+  const vendorEl = $("#vendor");
+  const descEl = $("#description");
+  const submitEl = $("#submit");
+  const statusEl = $("#status");
+  const entriesEl = $("#entries");
+  const emptyEl = $("#empty");
+  const clearEl = $("#clear");
+  const monthTotalEl = $("#month-total");
+
+  const money = new Intl.NumberFormat(undefined, { style: "currency", currency: CONFIG.currency });
+  const plain = new Intl.NumberFormat(undefined, { style: "currency", currency: CONFIG.currency, currencyDisplay: "symbol" });
+  const symbol = (plain.formatToParts(0).find((p) => p.type === "currency") || {}).value || CONFIG.currency;
+  $("#sym").textContent = symbol;
+
+  const webhookReady = () => /^https:\/\/hooks\.zapier\.com\/hooks\/catch\/\d+\/\w+\/?/.test(CONFIG.webhookUrl);
+  if (!webhookReady()) $("#setup").hidden = false;
+
+  const todayStr = () => {
+    const d = new Date();
+    d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+    return d.toISOString().slice(0, 10);
+  };
+  dateEl.value = todayStr();
+
+  /* Chips ------------------------------------------------------------- */
+  function buildChips(container, name, items, checkedValue) {
+    items.forEach((text) => {
+      const label = document.createElement("label");
+      label.className = "chip";
+      const input = document.createElement("input");
+      input.type = "radio";
+      input.name = name;
+      input.value = text;
+      if (text === checkedValue) input.checked = true;
+      const span = document.createElement("span");
+      span.textContent = text;
+      label.append(input, span);
+      container.append(label);
+    });
+  }
+  buildChips($("#categories"), "category", CONFIG.categories, null);
+  buildChips($("#payments"), "payment", CONFIG.paymentMethods, CONFIG.paymentMethods[0]);
+
+  /* Amount ------------------------------------------------------------ */
+  function parseAmount(text) {
+    const cleaned = String(text).replace(/,/g, "").trim();
+    if (!/^\d*\.?\d+$|^\d+\.$/.test(cleaned)) return null;
+    const n = Number(cleaned);
+    return Number.isFinite(n) && n > 0 ? Math.round(n * 100) / 100 : null;
+  }
+  amountEl.addEventListener("input", () => {
+    amountEl.value = amountEl.value.replace(/[^\d.,]/g, "");
+  });
+  amountEl.addEventListener("blur", () => {
+    const n = parseAmount(amountEl.value);
+    if (n) amountEl.value = n.toFixed(2);
+  });
+
+  /* Saved list -------------------------------------------------------- */
+  function loadEntries() {
+    try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]"); }
+    catch { return []; }
+  }
+  function saveEntries(list) {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(list.slice(0, 200))); }
+    catch { /* storage unavailable: the list just won't persist */ }
+  }
+  function shortDate(iso) {
+    const d = new Date(iso + "T00:00:00");
+    return isNaN(d) ? iso : d.toLocaleDateString(undefined, { day: "numeric", month: "short" });
+  }
+  function render(highlightId) {
+    const list = loadEntries();
+    entriesEl.replaceChildren();
+
+    list.slice(0, 8).forEach((e) => {
+      const li = document.createElement("li");
+      li.className = "entry" + (e.id === highlightId ? " new" : "");
+
+      const left = document.createElement("div");
+      const title = document.createElement("div");
+      title.className = "title";
+      title.textContent = e.vendor;
+      const meta = document.createElement("div");
+      meta.className = "meta";
+      const cat = document.createElement("span");
+      cat.textContent = e.category;
+      const when = document.createElement("span");
+      when.textContent = shortDate(e.date);
+      meta.append(cat, when);
+      left.append(title, meta);
+
+      const amt = document.createElement("div");
+      amt.className = "amt";
+      amt.textContent = money.format(e.amount);
+
+      li.append(left, amt);
+      entriesEl.append(li);
+    });
+
+    const month = todayStr().slice(0, 7);
+    const total = list
+      .filter((e) => String(e.date).slice(0, 7) === month)
+      .reduce((sum, e) => sum + Number(e.amount || 0), 0);
+    monthTotalEl.textContent = money.format(total);
+
+    emptyEl.hidden = list.length > 0;
+    clearEl.hidden = list.length === 0;
+  }
+  clearEl.addEventListener("click", () => {
+    if (confirm("Clear this list? Your Google Sheet won't change.")) {
+      saveEntries([]);
+      render();
+    }
+  });
+
+  /* Status ------------------------------------------------------------ */
+  function show(kind, message) {
+    statusEl.className = "status " + kind;
+    statusEl.textContent = message;
+  }
+
+  /* Submit ------------------------------------------------------------ */
+  let busy = false;
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (busy) return;
+
+    const amount = parseAmount(amountEl.value);
+    const category = form.elements.category.value;
+    const date = dateEl.value;
+    const vendor = vendorEl.value.trim();
+    const payment = form.elements.payment.value;
+
+    const problems = [];
+    let firstBad = null;
+    if (!amount) { problems.push("Enter an amount greater than zero."); firstBad = firstBad || amountEl; }
+    if (!category) { problems.push("Pick a category."); firstBad = firstBad || form.querySelector("input[name=category]"); }
+    if (!date) { problems.push("Choose the expense date."); firstBad = firstBad || dateEl; }
+    if (!vendor) { problems.push("Enter who was paid."); firstBad = firstBad || vendorEl; }
+    if (problems.length) {
+      show("err", problems.join(" "));
+      firstBad.focus();
+      return;
+    }
+
+    if (!webhookReady()) {
+      show("err", "The Zapier webhook URL isn't set. Add it to CONFIG at the top of the script in index.html.");
+      return;
+    }
+
+    const payload = {
+      expense_id: (crypto.randomUUID ? crypto.randomUUID() : String(Date.now())),
+      date,
+      amount: amount.toFixed(2),
+      category,
+      vendor,
+      description: descEl.value.trim(),
+      payment_method: payment,
+      submitted_at: new Date().toISOString()
+    };
+
+    busy = true;
+    submitEl.disabled = true;
+    submitEl.textContent = "Saving…";
+    statusEl.className = "status";
+    statusEl.textContent = "";
+
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 15000);
+
+    try {
+      // no-cors: Zapier doesn't send CORS headers, so the response is opaque.
+      // A thrown error means the request never left the browser.
+      await fetch(CONFIG.webhookUrl, {
+        method: "POST",
+        mode: "no-cors",
+        body: new URLSearchParams(payload),
+        signal: controller.signal
+      });
+
+      const list = loadEntries();
+      list.unshift({
+        id: payload.expense_id,
+        date,
+        amount,
+        category,
+        vendor
+      });
+      saveEntries(list);
+      render(payload.expense_id);
+
+      amountEl.value = "";
+      vendorEl.value = "";
+      descEl.value = "";
+      form.querySelectorAll("input[name=category]").forEach((r) => (r.checked = false));
+      show("ok", "Expense saved. Your sheet updates in a moment and the report email follows.");
+      amountEl.focus();
+    } catch (err) {
+      show("err", "Couldn't reach Zapier. Check your connection and try again. Your entry is still filled in.");
+    } finally {
+      clearTimeout(timer);
+      busy = false;
+      submitEl.disabled = false;
+      submitEl.textContent = "Save expense";
+    }
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>
